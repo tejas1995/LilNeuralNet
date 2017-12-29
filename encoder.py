@@ -9,7 +9,7 @@ class Encoder(nn.Module):
         self.hidden_dim = hidden_dim
         self.embed_dim = embed_dim
 
-        self.embedding = nn.Embedding(input_dim, vocab_size)
+        self.embedding = nn.Embedding(vocab_size, embed_dim)
         self.gru = nn.GRU(embed_dim, hidden_dim)
 
 

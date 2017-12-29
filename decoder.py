@@ -3,7 +3,7 @@ import torch.nn.functional as F
 
 class Decoder(nn.Module):
 
-    def __init__(self, vocab_size, hidden_dim, output_dim, n_layers=1):
+    def __init__(self, vocab_size, hidden_dim, embed_dim, output_dim, n_layers=1):
 
         super(Decoder, self).__init__()
         self.n_layers = n_layers
