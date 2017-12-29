@@ -1,4 +1,6 @@
+import torch
 import torch.nn as nn
+import torch.autograd as autograd
 
 class Encoder(nn.Module):
 
@@ -21,7 +23,7 @@ class Encoder(nn.Module):
 
     def forward(self, input, hidden):
 
-        embedded = self.embed(input).view(1, 1, -1)
+        embedded = self.embedding(input).view(1, 1, -1)
         output = embedded
         for i in range(self.n_layers):
             output, hidden = self.gru(output, hidden)

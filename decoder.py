@@ -1,5 +1,7 @@
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.autograd as autograd
 
 class Decoder(nn.Module):
 
@@ -24,12 +26,12 @@ class Decoder(nn.Module):
 
     def forward(self, input, hidden):
 
-        embedded = self.embed(input).view(1, 1, -1)
+        embedded = self.embedding(input).view(1, 1, -1)
         output = embedded
         for i in range(self.n_layers):
             output = F.relu(output)
             output, hidden = self.gru(output, hidden)
-        output = self.softmax(self.output(self.out[0]))
+        output = self.softmax(self.out(output[0]))
         return output, hidden
 
  

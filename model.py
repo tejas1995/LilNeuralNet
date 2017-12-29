@@ -5,10 +5,12 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 import matplotlib
+matplotlib.use('GtkAgg')
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 
 import random
+import time
 
 from preprocess_lyrics import preprocLyrics
 from encoder import Encoder
@@ -22,7 +24,7 @@ END_TOKEN = 'END_TOKEN'
 EMBEDDING_DIM = 32
 HIDDEN_DIM = 100
 MAX_LENGTH = 50
-NUM_EPOCHS = 10
+NUM_EPOCHS = 20
 
 
 def buildVocab(list_verses):
@@ -58,7 +60,7 @@ def getTrainingData(list_verses, word_to_index):
 
             X = [word_to_index[w] for w in verse[i]]
             Y = [word_to_index[w] for w in verse[i+1]]
-            Y.append(END_TOKEN)
+            Y.append(word_to_index[END_TOKEN])
             training_data.append((X, Y))
 
     random.shuffle(training_data)
@@ -79,6 +81,8 @@ def list2Variables(training_data):
 
     training_pairs = []
     for seq_in, seq_out in training_data:
+        # print 'seq_in:', seq_in
+        # print 'seq_out:', seq_out
         var_in = seq2Tensor(seq_in)
         var_out = seq2Tensor(seq_out)
         training_pairs.append((var_in, var_out))
@@ -99,13 +103,12 @@ def train(input_var, target_var, encoder, decoder, enc_optim, dec_optim, criteri
     loss = 0
 
     for ei in range(input_length):
-        encoder_output, encoder_hidden = encoder(input_variable[ei], encoder_hidden)
+        encoder_output, encoder_hidden = encoder(input_var[ei], encoder_hidden)
 
     decoder_hidden = encoder_hidden
-    decoder_input = autograd.Variable(torch.LongTensor([word_to_index[START_TOKEN]])
+    decoder_input = autograd.Variable(torch.LongTensor([word_to_index[START_TOKEN]]))
 
     for di in range(target_length):
-
         decoder_output, decoder_hidden = decoder(decoder_input, decoder_hidden)
         loss += criterion(decoder_output, target_var[di])
         decoder_input = target_var[di]
@@ -118,7 +121,7 @@ def train(input_var, target_var, encoder, decoder, enc_optim, dec_optim, criteri
     return loss.data[0]/target_length
 
 
-def trainIters(training_data, encoder, decoder, num_epochs, word_to_index, learning_rate=1e-3, print_every=10):
+def trainIters(training_data, encoder, decoder, epochs, word_to_index, learning_rate=1e-3, print_every=100):
 
     encoder_optim = optim.SGD(encoder.parameters(), lr=learning_rate)
     decoder_optim = optim.SGD(decoder.parameters(), lr=learning_rate)
@@ -130,8 +133,10 @@ def trainIters(training_data, encoder, decoder, num_epochs, word_to_index, learn
     sum_loss = 0
     list_losses = []
 
+    start_time = time.time()
     for epoch in range(epochs):
 
+        print 'Epoch:', epoch
         sum_loss = 0
         for iter in range(1, size_data+1):
 
@@ -144,8 +149,11 @@ def trainIters(training_data, encoder, decoder, num_epochs, word_to_index, learn
 
             if iter % print_every == 0:
 
-                print 'Summed loss over last', print_every, 'iters:', sum_loss
-                list_losses.append(sum_loss/print_every)
+                avg_loss = sum_loss/print_every
+                print 'Iter:', iter,
+                print '\tAverage loss over last', print_every,'iters:', round(avg_loss, 4),
+                print '\tTime elapsed:', round((time.time()-start_time)/60, 2), 'mins'
+                list_losses.append(avg_loss)
                 sum_loss = 0
 
     # Save encoder and decoder
@@ -155,11 +163,13 @@ def trainIters(training_data, encoder, decoder, num_epochs, word_to_index, learn
 
 def showPlot(list_losses):
 
+    print 'Printing plot...'
     plt.figure()
     fig, ax = plt.subplots()
     loc = ticker.MultipleLocator(0.2)
     ax.yaxis.set_major_locator(loc)
     plt.plot(list_losses)
+    plt.show()
 
 
 
