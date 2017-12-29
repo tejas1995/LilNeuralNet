@@ -1,6 +1,23 @@
+import torch
+import torch.autograd as autograd
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+
 import random
 
 from preprocess_lyrics import preprocLyrics
+from encoder import Encoder
+from decoder import Decoder
+
+
+START_TOKEN = 'START_TOKEN'
+END_TOKEN = 'END_TOKEN'
+
+# Define some constants
+EMBEDDING_DIM = 32
+HIDDEN_DIM = 100
+MAX_LENGTH = 50
 
 
 def buildVocab(list_verses):
@@ -43,6 +60,22 @@ def getTrainingData(list_verses, word_to_index):
     # print 'Example output sequence:', [vocab[i] for i in training_data[0][1]]
 
     return training_data
+
+
+def seq2Tensor(seq):
+    tensor = torch.LongTensor(seq).view(-1, 1)
+    return autograd.Variable(tensor)
+
+
+def list2Variables(training_data):
+
+    training_pairs = []
+    for seq_in, seq_out in training_data:
+        var_in = seq2Tensor(seq_in)
+        var_out = seq2Tensor(seq_out)
+        training_pairs.append((var_in, var_out))
+
+    return training_pairs
 
 
 if __name__=='__main__':
