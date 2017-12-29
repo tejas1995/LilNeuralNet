@@ -29,7 +29,7 @@ dec_pkl_file = 'kanye-decoder.pkl'
 EMBEDDING_DIM = 32
 HIDDEN_DIM = 100
 MAX_LENGTH = 50
-NUM_EPOCHS = 20
+NUM_EPOCHS = 200
 
 
 def getTrainingData(list_verses, word_to_index):
@@ -121,6 +121,8 @@ def trainIters(training_data, encoder, decoder, epochs, word_to_index, learning_
 
         print 'Epoch:', epoch
         sum_loss = 0
+        random.shuffle(training_pairs)
+
         for iter in range(1, size_data+1):
 
             training_pair = training_pairs[iter-1]
