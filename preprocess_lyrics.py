@@ -1,5 +1,11 @@
 import re
 
+# Starting and ending tokens
+START_TOKEN = 'START_TOKEN'
+END_TOKEN = 'END_TOKEN'
+UNK_TOKEN = 'UNK'
+
+
 def preprocLyrics(lyrics_filename):
 
     lyrics_file = open(lyrics_filename, 'r')
@@ -38,3 +44,27 @@ def processWord(word):
     new_word = ''.join(new_word_l)
     new_word = new_word.lower()
     return new_word
+
+
+def buildVocab(list_verses):
+
+    vocab = []
+    vocab.append(START_TOKEN)
+    vocab.append(END_TOKEN)
+    vocab.append(UNK_TOKEN)
+
+    for verse in list_verses:
+        for line in verse:
+            for word in line:
+                if word not in vocab:
+                    vocab.append(word)
+
+    word_to_index = {}
+    for word in vocab:
+        # print word
+        word_to_index[word] = vocab.index(word)
+
+    print 'Vocabulary size:', len(vocab)
+
+    return vocab, word_to_index
+

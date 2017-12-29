@@ -12,41 +12,24 @@ import matplotlib.ticker as ticker
 import random
 import time
 
-from preprocess_lyrics import preprocLyrics
+from preprocess_lyrics import preprocLyrics, buildVocab
 from encoder import Encoder
 from decoder import Decoder
 
-
+# Starting and ending tokens
 START_TOKEN = 'START_TOKEN'
 END_TOKEN = 'END_TOKEN'
+UNK_TOKEN = 'UNK'
+
+# Files for saving the model
+enc_pkl_file = 'kanye-encoder.pkl'
+dec_pkl_file = 'kanye-decoder.pkl'
 
 # Define some constants
 EMBEDDING_DIM = 32
 HIDDEN_DIM = 100
 MAX_LENGTH = 50
 NUM_EPOCHS = 20
-
-
-def buildVocab(list_verses):
-
-    vocab = []
-    vocab.append(START_TOKEN)
-    vocab.append(END_TOKEN)
-
-    for verse in list_verses:
-        for line in verse:
-            for word in line:
-                if word not in vocab:
-                    vocab.append(word)
-
-    word_to_index = {}
-    for word in vocab:
-        # print word
-        word_to_index[word] = vocab.index(word)
-
-    print 'Vocabulary size:', len(vocab)
-
-    return vocab, word_to_index
 
 
 def getTrainingData(list_verses, word_to_index):
@@ -157,7 +140,10 @@ def trainIters(training_data, encoder, decoder, epochs, word_to_index, learning_
                 sum_loss = 0
 
     # Save encoder and decoder
+    torch.save(encoder.state_dict(), enc_pkl_file)
+    torch.save(decoder.state_dict(), dec_pkl_file)
 
+    # Plot losses
     showPlot(list_losses)
 
 
