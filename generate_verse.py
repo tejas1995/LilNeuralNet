@@ -29,7 +29,21 @@ dec_pkl_file = 'kanye-decoder.pkl'
 EMBEDDING_DIM = 32
 HIDDEN_DIM = 100
 MAX_OUTPUT_LENGTH = 15
-NUM_EPOCHS = 20
+BEAM_WIDTH = 5
+
+
+class decHypothesis:
+
+    def __init__(self, parent, last_token, prob):
+
+        self.prob = prob
+        self.parent = parent
+        self.last_token = last_token
+        self.hidden_state = None
+
+    def setHidden(self, hidden_state):
+
+        self.hidden_state = hidden_state
 
 
 def seq2Tensor(seq):
@@ -49,21 +63,97 @@ def predictNextLine(input_var, encoder, decoder, word_to_index):
     decoder_hidden = encoder_hidden
     decoder_input = autograd.Variable(torch.LongTensor([word_to_index[START_TOKEN]]))
 
+    init_hypothesis = decHypothesis(None, decoder_input, 0)
+    init_hypothesis.setHidden(decoder_hidden)
 
+    final_hypotheses = []
     next_line = []
-    for di in range(MAX_OUTPUT_LENGTH):
-        decoder_output, decoder_hidden = decoder(decoder_input, decoder_hidden)
-        topv, topi = decoder_output.data.topk(2)
-        ni = topi[0][0]
 
+    # Decoding beam
+    beam = [init_hypothesis]
+
+    for di in range(MAX_OUTPUT_LENGTH):
+
+        '''
+        decoder_output, decoder_hidden = decoder(decoder_input, decoder_hidden)
+        topv, topi = decoder_output.data.topk(1)
+        ni = topi[0][0]
         if ni is word_to_index[END_TOKEN]:
             break
-
         if ni is word_to_index[START_TOKEN] or ni is word_to_index[UNK_TOKEN]:
             ni = topi[0][1]
         decoder_input = autograd.Variable(torch.LongTensor([ni]))
 
         next_line.append(ni)
+
+        '''
+        # print di
+        new_beam = []
+        new_possible_hypotheses = []
+
+        # print '-------'
+        # print 'beam length:', len(beam)
+
+        for hypothesis in beam:
+
+            # Explore each previous hypothesis by adding one more token, retain top beam_width new hypothesis
+            decoder_input = hypothesis.last_token
+            prev_hidden = hypothesis.hidden_state
+            decoder_output, decoder_hidden = decoder(decoder_input, prev_hidden)
+            topv, topi = decoder_output.data.topk(BEAM_WIDTH)
+
+            for i in range(BEAM_WIDTH):
+                prob = topv[0,i]
+                index = topi[0,i]
+
+                # print di, index, prob
+                if index == word_to_index[START_TOKEN] or index == word_to_index[UNK_TOKEN]:
+                    continue
+                # print di, index, prob
+
+                h = decHypothesis(hypothesis, autograd.Variable(torch.LongTensor([index])), round(prob+hypothesis.prob, 6))
+                h.setHidden(decoder_hidden)
+                new_possible_hypotheses.append(h)
+
+
+        new_possible_hypotheses.sort(key=lambda x: x.prob, reverse=True)
+        # print len(new_possible_hypotheses)
+        new_possible_hypotheses = new_possible_hypotheses[:BEAM_WIDTH]
+        # print len(new_possible_hypotheses)
+
+        # print '----------'
+        non_terminating_hypotheses = []
+        for h in new_possible_hypotheses:
+            # print 'last token:', h.last_token.data[0]
+            if h.last_token.data[0] == word_to_index[END_TOKEN]:
+                hypothesis_output = []
+                hypothesis_prob = h.prob
+                while h.parent != None:
+                    hypothesis_output.append(h.parent.last_token.data[0])
+                    h = h.parent
+
+                final_hypotheses.append((hypothesis_prob, hypothesis_output[::-1]))
+
+            else:
+                non_terminating_hypotheses.append(h)
+
+        beam = non_terminating_hypotheses
+
+        if di == MAX_OUTPUT_LENGTH-1:
+            for h in beam:
+                hypothesis_output = []
+                hypothesis_prob = h.prob
+                while h.parent != None:
+                    hypothesis_output.append(h.parent.last_token.data[0])
+                    h = h.parent
+
+                final_hypotheses.append((hypothesis_prob, hypothesis_output[::-1]))
+
+    # print 'Number of final hypotheses:', len(final_hypotheses)
+    best_hypothesis = max(final_hypotheses, key=lambda x: x[0]/len(x[1]))
+    next_line = best_hypothesis[1][1:]
+        
+
 
     return next_line
 
@@ -97,7 +187,7 @@ if __name__=='__main__':
     # print input_seq
     # print [vocab[ind] for ind in input_seq]
 
-    verse_length = random.choice([12, 16, 20, 24])
+    verse_length = random.choice(range(12, 25))
 
     for line in range(verse_length-1):
 
