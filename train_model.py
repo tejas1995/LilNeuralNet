@@ -15,6 +15,7 @@ import time
 from preprocess_lyrics import preprocLyrics, buildVocab
 from encoder import Encoder
 from decoder import Decoder
+from evaluate_model import evaluate
 
 # Starting and ending tokens
 START_TOKEN = 'START_TOKEN'
@@ -29,7 +30,7 @@ dec_pkl_file = 'kanye-decoder.pkl'
 EMBEDDING_DIM = 32
 HIDDEN_DIM = 100
 MAX_LENGTH = 50
-NUM_EPOCHS = 200
+NUM_EPOCHS = 300
 
 
 def getTrainingData(list_verses, word_to_index):
@@ -94,7 +95,10 @@ def train(input_var, target_var, encoder, decoder, enc_optim, dec_optim, criteri
     for di in range(target_length):
         decoder_output, decoder_hidden = decoder(decoder_input, decoder_hidden)
         loss += criterion(decoder_output, target_var[di])
-        decoder_input = target_var[di]
+        topv, topi = decoder_output.data.topk(1)
+        ni = topi[0][0]
+        decoder_input = autograd.Variable(torch.LongTensor([ni]))
+        # decoder_input = target_var[di]
 
     loss.backward()
 
@@ -104,12 +108,17 @@ def train(input_var, target_var, encoder, decoder, enc_optim, dec_optim, criteri
     return loss.data[0]/target_length
 
 
-def trainIters(training_data, encoder, decoder, epochs, word_to_index, learning_rate=1e-3, print_every=100):
+def trainIters(training_data, testing_data, encoder, decoder, epochs, word_to_index, learning_rate=1e-3, print_every=100):
 
     encoder_optim = optim.SGD(encoder.parameters(), lr=learning_rate)
     decoder_optim = optim.SGD(decoder.parameters(), lr=learning_rate)
 
     training_pairs = list2Variables(training_data)
+    testing_pairs = list2Variables(testing_data)
+
+    train_perp_scores = []
+    test_perp_scores = []
+
     size_data = len(training_pairs)
     criterion = nn.NLLLoss()
 
@@ -136,27 +145,39 @@ def trainIters(training_data, encoder, decoder, epochs, word_to_index, learning_
 
                 avg_loss = sum_loss/print_every
                 print 'Iter:', iter,
-                print '\tAverage loss over last', print_every,'iters:', round(avg_loss, 4),
+                print '\tAverage loss over last', print_every,'iters:', format(avg_loss, '.4f'),
                 print '\tTime elapsed:', round((time.time()-start_time)/60, 2), 'mins'
                 list_losses.append(avg_loss)
                 sum_loss = 0
+
+        if epoch % 10 == 0:
+            print 'Training perplexity:'
+            train_perp = evaluate(training_pairs, encoder, decoder, word_to_index)
+            print 'Testing perplexity:'
+            test_perp = evaluate(testing_pairs, encoder, decoder, word_to_index)
+
+            train_perp_scores.append(train_perp)
+            test_perp_scores.append(test_perp)
 
     # Save encoder and decoder
     torch.save(encoder.state_dict(), enc_pkl_file)
     torch.save(decoder.state_dict(), dec_pkl_file)
 
     # Plot losses
-    showPlot(list_losses)
+    showPlot(list_losses, 'List of losses')
+    showPlot(train_perp_scores, 'Perplexity scores for training data')
+    showPlot(test_perp_scores, 'Perplexity scores for testing data')
 
 
-def showPlot(list_losses):
+def showPlot(list_losses, title):
 
     print 'Printing plot...'
     plt.figure()
-    fig, ax = plt.subplots()
-    loc = ticker.MultipleLocator(0.2)
-    ax.yaxis.set_major_locator(loc)
+    # fig, ax = plt.subplots()
+    # loc = ticker.MultipleLocator(0.2)
+    # ax.yaxis.set_major_locator(loc)
     plt.plot(list_losses)
+    plt.title(title)
     plt.show()
 
 
@@ -167,8 +188,12 @@ if __name__=='__main__':
     vocab, word_to_index = buildVocab(verses_data)
     training_data = getTrainingData(verses_data, word_to_index)
 
+    TRAIN_SIZE = int(0.8*len(training_data))
+    testing_data = training_data[TRAIN_SIZE:]
+    training_data = training_data[:TRAIN_SIZE]
+
     VOCAB_SIZE = len(vocab)
     encoder = Encoder(VOCAB_SIZE, HIDDEN_DIM, EMBEDDING_DIM)
     decoder = Decoder(VOCAB_SIZE, HIDDEN_DIM, EMBEDDING_DIM, VOCAB_SIZE)
 
-    trainIters(training_data, encoder, decoder, NUM_EPOCHS, word_to_index)
+    trainIters(training_data, testing_data, encoder, decoder, NUM_EPOCHS, word_to_index)
