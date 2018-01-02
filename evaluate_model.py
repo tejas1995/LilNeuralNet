@@ -45,8 +45,8 @@ def evaluate(dataset, encoder, decoder, word_to_index):
         sequence_length_sum += target_length
         log_prob_sum += word_prob_sum
 
-    print 'Sequence length:', sequence_length_sum
-    print 'log prob sum:', log_prob_sum
+    # print 'Sequence length:', sequence_length_sum
+    # print 'log prob sum:', log_prob_sum
     log_prob_mean = -1.0*log_prob_sum/sequence_length_sum
 
     perplexity = math.exp(log_prob_mean)
