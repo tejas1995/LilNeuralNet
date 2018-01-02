@@ -30,8 +30,8 @@ dec_pkl_file = 'kanye-decoder.pkl'
 EMBEDDING_DIM = 32
 HIDDEN_DIM = 100
 MAX_LENGTH = 50
-NUM_EPOCHS = 300
-
+NUM_EPOCHS = 401
+TF_RATIO = 0.2
 
 def getTrainingData(list_verses, word_to_index):
 
@@ -86,19 +86,30 @@ def train(input_var, target_var, encoder, decoder, enc_optim, dec_optim, criteri
 
     loss = 0
 
+    tf_ratio = TF_RATIO
+
+    use_tf = True if random.random() < tf_ratio else False
+
     for ei in range(input_length):
         encoder_output, encoder_hidden = encoder(input_var[ei], encoder_hidden)
 
     decoder_hidden = encoder_hidden
     decoder_input = autograd.Variable(torch.LongTensor([word_to_index[START_TOKEN]]))
 
-    for di in range(target_length):
-        decoder_output, decoder_hidden = decoder(decoder_input, decoder_hidden)
-        loss += criterion(decoder_output, target_var[di])
-        topv, topi = decoder_output.data.topk(1)
-        ni = topi[0][0]
-        decoder_input = autograd.Variable(torch.LongTensor([ni]))
-        # decoder_input = target_var[di]
+
+    if use_tf is False:
+        for di in range(target_length):
+            decoder_output, decoder_hidden = decoder(decoder_input, decoder_hidden)
+            loss += criterion(decoder_output, target_var[di])
+            topv, topi = decoder_output.data.topk(1)
+            ni = topi[0][0]
+            decoder_input = autograd.Variable(torch.LongTensor([ni]))
+    else:    
+        for di in range(target_length):
+            decoder_output, decoder_hidden = decoder(decoder_input, decoder_hidden)
+            loss += criterion(decoder_output, target_var[di])
+            decoder_input = target_var[di]
+
 
     loss.backward()
 
@@ -151,13 +162,14 @@ def trainIters(training_data, testing_data, encoder, decoder, epochs, word_to_in
                 sum_loss = 0
 
         if epoch % 10 == 0:
-            print 'Training perplexity:'
             train_perp = evaluate(training_pairs, encoder, decoder, word_to_index)
-            print 'Testing perplexity:'
-            test_perp = evaluate(testing_pairs, encoder, decoder, word_to_index)
+            print 'Training perplexity:', train_perp
+
+            # print 'Testing perplexity:'
+            # test_perp = evaluate(testing_pairs, encoder, decoder, word_to_index)
 
             train_perp_scores.append(train_perp)
-            test_perp_scores.append(test_perp)
+            # test_perp_scores.append(test_perp)
 
     # Save encoder and decoder
     torch.save(encoder.state_dict(), enc_pkl_file)
@@ -166,7 +178,7 @@ def trainIters(training_data, testing_data, encoder, decoder, epochs, word_to_in
     # Plot losses
     showPlot(list_losses, 'List of losses')
     showPlot(train_perp_scores, 'Perplexity scores for training data')
-    showPlot(test_perp_scores, 'Perplexity scores for testing data')
+    # showPlot(test_perp_scores, 'Perplexity scores for testing data')
 
 
 def showPlot(list_losses, title):
@@ -188,9 +200,10 @@ if __name__=='__main__':
     vocab, word_to_index = buildVocab(verses_data)
     training_data = getTrainingData(verses_data, word_to_index)
 
-    TRAIN_SIZE = int(0.8*len(training_data))
-    testing_data = training_data[TRAIN_SIZE:]
-    training_data = training_data[:TRAIN_SIZE]
+    # TRAIN_SIZE = int(0.8*len(training_data))
+    # testing_data = training_data[TRAIN_SIZE:]
+    # training_data = training_data[:TRAIN_SIZE]
+    testing_data = []
 
     VOCAB_SIZE = len(vocab)
     encoder = Encoder(VOCAB_SIZE, HIDDEN_DIM, EMBEDDING_DIM)
