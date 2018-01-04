@@ -9,6 +9,7 @@ matplotlib.use('GtkAgg')
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 
+import sys
 import random
 import time
 
@@ -22,15 +23,17 @@ START_TOKEN = 'START_TOKEN'
 END_TOKEN = 'END_TOKEN'
 UNK_TOKEN = 'UNK'
 
+ARTIST = sys.argv[1]
 # Files for saving the model
-enc_pkl_file = 'kanye-encoder.pkl'
-dec_pkl_file = 'kanye-decoder.pkl'
+enc_pkl_file = ARTIST + '/encoder.pkl'
+dec_pkl_file = ARTIST + '/decoder.pkl'
+lyrics_filename = ARTIST+ '/lyrics.txt'
 
 # Define some constants
 EMBEDDING_DIM = 32
 HIDDEN_DIM = 100
 MAX_LENGTH = 50
-NUM_EPOCHS = 401
+NUM_EPOCHS = 101
 TF_RATIO = 0.2
 
 def getTrainingData(list_verses, word_to_index):
@@ -121,8 +124,8 @@ def train(input_var, target_var, encoder, decoder, enc_optim, dec_optim, criteri
 
 def trainIters(training_data, testing_data, encoder, decoder, epochs, word_to_index, learning_rate=1e-3, print_every=100):
 
-    encoder_optim = optim.SGD(encoder.parameters(), lr=learning_rate)
-    decoder_optim = optim.SGD(decoder.parameters(), lr=learning_rate)
+    encoder_optim = optim.Adam(encoder.parameters(), lr=learning_rate)
+    decoder_optim = optim.Adam(decoder.parameters(), lr=learning_rate)
 
     training_pairs = list2Variables(training_data)
     testing_pairs = list2Variables(testing_data)
@@ -196,7 +199,7 @@ def showPlot(list_losses, title):
 
 if __name__=='__main__':
 
-    verses_data = preprocLyrics('Kanye-lyrics.txt')
+    verses_data = preprocLyrics(lyrics_filename)
     vocab, word_to_index = buildVocab(verses_data)
     training_data = getTrainingData(verses_data, word_to_index)
 
