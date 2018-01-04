@@ -9,6 +9,7 @@ matplotlib.use('GtkAgg')
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 
+import sys
 import random
 import time
 
@@ -21,9 +22,12 @@ START_TOKEN = 'START_TOKEN'
 END_TOKEN = 'END_TOKEN'
 UNK_TOKEN = 'UNK'
 
+ARTIST = sys.argv[1]
+
 # Files for saving the model
-enc_pkl_file = 'kanye-encoder.pkl'
-dec_pkl_file = 'kanye-decoder.pkl'
+enc_pkl_file = ARTIST + '/encoder.pkl'
+dec_pkl_file = ARTIST + '/decoder.pkl'
+lyrics_filename = ARTIST + '/lyrics.txt'
 
 # Define some constants
 EMBEDDING_DIM = 32
@@ -74,7 +78,7 @@ def predictNextLine(input_var, encoder, decoder, word_to_index):
 
     for di in range(MAX_OUTPUT_LENGTH):
 
-        '''
+
         decoder_output, decoder_hidden = decoder(decoder_input, decoder_hidden)
         topv, topi = decoder_output.data.topk(1)
         ni = topi[0][0]
@@ -152,7 +156,7 @@ def predictNextLine(input_var, encoder, decoder, word_to_index):
     # print 'Number of final hypotheses:', len(final_hypotheses)
     best_hypothesis = max(final_hypotheses, key=lambda x: x[0]/len(x[1]))
     next_line = best_hypothesis[1][1:]
-        
+        '''        
 
 
     return next_line
@@ -160,7 +164,7 @@ def predictNextLine(input_var, encoder, decoder, word_to_index):
 
 if __name__=='__main__':
 
-    verses_data = preprocLyrics('Kanye-lyrics.txt')
+    verses_data = preprocLyrics(lyrics_filename)
     vocab, word_to_index = buildVocab(verses_data)
     VOCAB_SIZE = len(vocab)
 
